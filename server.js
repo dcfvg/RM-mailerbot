@@ -1,19 +1,18 @@
 var
-    fs = require('fs'),
-    conf = require('./conf.json');
-    Imap = require('imap'),
-    _ = require('lodash'),
-    mkpath = require('mkpath'),
-    path = require('path'),
-    gm = require('gm'),
-    slug = require('slug'),
-    glob = require("glob"),
-    MailParser = require('mailparser').MailParser,
+  fs = require('fs'),
+  conf = require('./conf.json');
+  Imap = require('imap'),
+  _ = require('lodash'),
+  mkpath = require('mkpath'),
+  path = require('path'),
+  gm = require('gm'),
+  slug = require('slug'),
+  glob = require("glob"),
+  MailParser = require('mailparser').MailParser;
 
+// connect mailbox
+listenInbox();
 
-listenInbox(); // connect mailbox
-
-// imap SERVER
 function listenInbox(){
 
   var imap = new Imap(conf.imap);
@@ -93,23 +92,17 @@ function onEmail(mailObject) {
         });
 
       });
-  }else {
+  } else {
     fs.writeFile(path+'.md', JSON.stringify(metaData), function(err){
       if(err) return console.log(err);
     });
   }
 
-
-
-
 };
 
-
 function cleanFilename(f){
-
   var ext = path.extname(f).toLowerCase();
   var name = path.basename(f, ext).toLowerCase();
-
   return slug(name) + ext;
 }
 

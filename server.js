@@ -8,9 +8,15 @@ var
   gm = require('gm'),
   slug = require('slug'),
   glob = require("glob"),
-  MailParser = require('mailparser').MailParser;
-
+  MailParser = require('mailparser').MailParser,
+  nodemailer = require('nodemailer');
 // connect mailbox
+var transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: { user: conf.imap.user, pass: conf.imap.password}},
+  function(err, data){ console.log(err, data);
+});
+
 listenInbox();
 
 function listenInbox(){
@@ -27,7 +33,6 @@ function listenInbox(){
   imap.on('mail', function(num) {
     imap.search(['UNSEEN'], function(err, result) {
       if (result.length) {
-
         var f = imap.fetch(result, {
           markSeen: conf.imap.markSeen,
           struct: true,
@@ -67,36 +72,44 @@ function onEmail(mailObject) {
 
   var metaData = {
     from: mailObject.from[0].address.toLowerCase(),
-    subject: mailObject.subject,
-    date:mailObject.date
+    subject: mailObject.subject+"",
+    date: mailObject.date
   }
 
-  var footPrint = metaData.from;
-  var path = __dirname+'/content/'+footPrint+'/';
+  var tags = metaData.subject.match(/#\S+/g);
+  var timestamp = Math.round(+new Date() / 1000);
 
-  mkpath(path);
+  if( !_.isUndefined(mailObject.attachments) && tags.length > 0){
 
-  if( !_.isUndefined(mailObject.attachments) ){
+    var path = __dirname+'/content/'+tags[0]+'/';
 
+    mkpath(path, function (err) {
+      if (err) throw err;
 
       mailObject.attachments.forEach(function(attachment){
+        console.log(metaData.from, attachment.fileName);
 
-        var filePath = path+cleanFilename(attachment.fileName);
-
-        fs.writeFile(filePath, attachment.content, function(err){
-          if(err) return console.log(err);
-        });
-
-        fs.writeFile(filePath+'.md', JSON.stringify( metaData ), function(err){
-          if(err) return console.log(err);
-        });
-
+        fs.writeFile(
+          path+timestamp+cleanFilename(attachment.fileName),
+          attachment.content,
+          function(err){ if(err) return console.log(err);}
+        );
       });
-  } else {
-    fs.writeFile(path+'.md', JSON.stringify(metaData), function(err){
-      if(err) return console.log(err);
     });
+
   }
+
+  var hashtag = _.sample(conf.hashtags);
+
+  var answer = {
+    from: conf.user,
+    to: metaData.from,
+    subject:hashtag,
+    text: conf.infoMessage
+  }
+
+  transporter.sendMail(answer,function(err){ if(err) console.log(err) });
+
 
 };
 
